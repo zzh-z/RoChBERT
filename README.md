@@ -65,15 +65,17 @@ Place TSV datasets in `res/data/<name>/` as `train.tsv`, `dev.tsv`, `test.tsv`, 
 - THUCNews: http://thuctc.thunlp.org
 
 OCNLI (https://github.com/cluebenchmark/OCNLI) is a natural language inference
-task with two input sentences per example, so it uses `label<TAB>text_a<TAB>text_b`
-and the scripts in `src/inference/` rather than the ones below.
+task, so it uses the scripts in `src/inference/` instead. It keeps the same two
+columns, with the premise and hypothesis joined in `text_a` by a `[sep]` marker;
+`part1/` and `part2/` attack the premise and the hypothesis respectively. Steps
+2-5 below use `src/classification/` and the single-sentence format above.
 
 `res/data/example/` holds 20 synthetic rows in the expected format. Substituting
-it for `res/data/ChnSentiCorp` below exercises all five steps on a small input,
-which is useful for checking the setup before starting a full run. It still
-downloads the pre-trained BERT weights, trains a checkpoint and runs the attacks
-on a CUDA GPU, so it is not instant, and 20 rows are far too few to train a
-usable model.
+it for `res/data/ChnSentiCorp` in the commands that follow exercises all five
+steps on a small input, which is useful for checking the setup before starting a
+full run. It still downloads the pre-trained BERT weights, trains a checkpoint
+and runs the attacks on a CUDA GPU, so it is not instant, and 20 rows are far
+too few to train a usable model.
 
 ### 2. Train
 ```sh
@@ -136,8 +138,34 @@ Results are written to `res/results/defended_pwws/summary.json`. `--attacker` ac
 - Steps 3 and 5 print progress counters only. Pass `--verbose` to also print attacker-dependent text and probability details, and `--write_attacker_scratch` to keep the attacker's scratch file in `--out_dir`. Both are off by default: the first writes dataset content into terminal and job logs, the second stores a plaintext copy of the original and adversarial texts on disk. Both settings are recorded in `manifest.json`.
 - Checkpoints must be the Lightning `.ckpt` files written by the trainers, which record the training arguments. A bare `torch.save(model.state_dict())` is not supported: it carries no `bert_name`, so the scripts cannot confirm the checkpoint matches the tokenizer they build.
 - `build_augmented_data.py` and `attack_defended.py` write progress after each example and resume if rerun with the same arguments.
-- Three optional metrics (`fluency`, `mistake`, `semantic`) are disabled by default; they need TensorFlow, a JRE, and extra downloads, and are unused by UASR/LASR/MR. To enable, set the flags in `attack_*.py` and install `tensorflow==2.9.0`, `tensorflow-hub==0.12.0`, `language-tool-python==3.4.0`, plus `conda install -c conda-forge openjdk`.
+- Three optional metrics (`fluency`, `mistake`, `semantic`) are disabled by default and are unused by UASR/LASR/MR. See [Optional evaluation metrics](#optional-evaluation-metrics).
 - `build_augmented_data.py` implements the data augmentation in Algorithm 1. Modification rate is the character-level edit distance divided by the length of the adversarial text, matching the paper's definition, and generated texts are deduplicated against the training set.
+
+## Optional evaluation metrics
+`fluency`, `mistake` and `semantic` are off by default in each `attack_*.py` and
+are not needed for the paper's UASR/LASR/MR numbers. They pull a TensorFlow stack
+that is independent of the pinned environment above. To enable them, set the
+flags to `True` in the `attack_*.py` you are running and install:
+
+```sh
+$ pip install tensorflow==2.9.0 tensorflow-hub==0.12.0 language-tool-python==3.4.0
+$ conda install -c conda-forge openjdk    # language-tool-python needs a JRE
+```
+
+`fluency` uses the Chinese GPT-2 `mymusise/EasternFantasyNoval`. The pinned
+`transformers==4.9.0` cannot fetch it from the current HuggingFace Hub, so
+download it once and load it from disk:
+
+```sh
+$ pip install -U huggingface_hub
+$ python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('mymusise/EasternFantasyNoval', local_dir='EasternFantasyNoval')"
+$ export ROCHBERT_FLUENCY_LM=$PWD/EasternFantasyNoval
+```
+
+Without `ROCHBERT_FLUENCY_LM` the model is read from
+`${HF_HOME:-~/.cache/huggingface}/EasternFantasyNoval`. `semantic` downloads the
+Universal Sentence Encoder from TensorFlow Hub on first use.
 
 ## BibTeX
 ```bibtex
