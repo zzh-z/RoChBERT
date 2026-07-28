@@ -1,0 +1,30 @@
+# dev / reference only
+archive/
+tests/
+.ctx/
+.claude/
+CLAUDE.md
+AGENTS.md
+
+# python
+__pycache__/
+*.pyc
+
+# OpenAttack downloads its data packages here at runtime
+/data/
+
+# os
+.DS_Store
+
+# resources: keep structure, ignore contents
+res/data/*
+res/ckpts/*
+res/results/*
+res/log/*
+!res/data/.gitkeep
+!res/data/example/
+!res/data/example/*
+!res/ckpts/.gitkeep
+!res/results/.gitkeep
+!res/log/.gitkeep
+lightning_logs/
